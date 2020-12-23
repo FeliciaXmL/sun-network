@@ -10,15 +10,7 @@
           <img :src="require('../assets/images/logo.png')">
         </a>
         <div class="nav">
-          <!-- <a
-            class="test nav-menu-item"
-            type="text"
-            href="https://tron.network/sunnetwork/doc"
-            target="_blank"
-            style="text-decoration: none;"
-          >{{$t('ApplyTestCoin')}}</a> -->
-
-          <!-- <el-button
+          <el-button
             class="deposit nav-menu-item"
             type="text"
             @click="depositTrx()"
@@ -28,7 +20,15 @@
             class="withdraw nav-menu-item"
             type="text"
             @click="withdrawTrx()"
-          >{{$t('WithdrawText')}}</el-button> -->
+          >{{$t('WithdrawText')}}</el-button>
+
+          <a
+            class="test nav-menu-item"
+            type="text"
+            href="https://tron.network/sunnetwork/"
+            target="_blank"
+            style="text-decoration: none;"
+          >{{$t('ApplyTestCoin')}}</a>
 
           <!-- 游戏介绍 -->
           <el-dropdown
@@ -80,10 +80,10 @@
             type="text"
             @click="login()"
           >{{$t('Login')}}</el-button>
-          <!-- <login-dg
+          <login-dg
             :params="loginDgParams"
             v-if="loginDgParams.show"
-          ></login-dg> -->
+          ></login-dg>
 
           <!-- 国际化 -->
           <div class="language">
@@ -106,21 +106,15 @@
         </div>
       </div>
     </div>
-    <el-dialog
-      title=""
-      :visible.sync="dialogVisible"
-      width="5.8rem"
-      custom-class="how-dialog play-dialog">
-      <p style="padding-bottom:20px;" v-html="loginWallet"></p>
-    </el-dialog>
-    <!-- <deposit-trx-dg
+
+    <deposit-trx-dg
       :params="depositTrxDgParams"
       v-if="depositTrxDgParams.show"
     ></deposit-trx-dg>
     <withdraw-trx-dg
       :params="withdrawTrxDgParams"
       v-if="withdrawTrxDgParams.show"
-    ></withdraw-trx-dg> -->
+    ></withdraw-trx-dg>
    <!-- <deposit-trc10-dg
       :params="depositTrc10DgParams"
       v-if="depositTrc10DgParams.show"
@@ -146,7 +140,6 @@ import DepositTrc10Dg from './dialog/depositTrc10';
 import DepositTrc20Dg from './dialog/depositTrc';
 import DepositTrc721Dg from './dialog/depositTrc';
 import { getBalance, getaccount } from "~/assets/js/common";
-import interfaceData from '../api/config';
 
 import { mapState } from "vuex";
 import Invite from "./Invite";
@@ -186,9 +179,6 @@ export default {
   },
   data() {
     return {
-      dialogVisible: false,
-      loginInfo: '',
-      loginWallet: '',
       loginDgParams: {
         show: false
       },
@@ -250,12 +240,12 @@ export default {
    
   },
   watch: {
-    // address: {
-    //   deep: true,
-    //   handler(val) {
-    //     this.getData();
-    //   }
-    // }
+    address: {
+      deep: true,
+      handler(val) {
+        this.getData();
+      }
+    }
   },
   mounted() {
     this.intervalBalance = setInterval(() => {
@@ -272,8 +262,7 @@ export default {
       "balance",
       "account",
       "trx20Account",
-      "mBalance",
-      "loginState"
+      "mBalance"
     ]),
     dice() {
       let asset = this.account ? this.account.asset : [];
@@ -289,21 +278,17 @@ export default {
   },
   methods: {
     async login() {
-      this.loginWallet = this.$t('loginWallet');
-
-      this.dialogVisible = true;
-      // let self = this;
-      // this.loginDgParams = {
-      //   show: true,
-      //   confirm: async (privateKey) => {
-      //     self.globalSunWeb.mainchain.setPrivateKey(privateKey.privateKey);
-      //     self.globalSunWeb.sidechain.setPrivateKey(privateKey.privateKey);
-      //     // window.sunWeb = self.globalSunWeb; /////
-      //     self.$store.commit('SET_SUNWEB', self.globalSunWeb);
-      //     self.$store.commit('SET_LOGINSTATE', true);
-      //     self.getBalance();
-      //   }
-      // }
+      let self = this;
+      this.loginDgParams = {
+        show: true,
+        confirm: async (privateKey) => {
+          self.globalSunWeb.mainchain.setPrivateKey(privateKey.privateKey);
+          self.globalSunWeb.sidechain.setPrivateKey(privateKey.privateKey);
+          window.sunWeb = self.globalSunWeb; /////
+          self.$store.commit('SET_SUNWEB', self.globalSunWeb);
+          self.getBalance();
+        }
+      }
     },
     async getBalance() {
       if (!this.address.base58) {
@@ -315,9 +300,9 @@ export default {
       this.$store.commit('SET_MBALANCE', this.globalSunWeb.mainchain.fromSun(mBalance));
     },
     withdrawTrx() {
-      if (!this.loginState) {
+      if (!this.address.base58) {
         this.$message({
-          type: "warn",
+          type: "success",
           message: this.$t("noLogin"),
           showClose: true
         });
@@ -330,7 +315,7 @@ export default {
         confirm: (p) => {
           const num = self.globalSunWeb.mainchain.toSun(p.num);
           const feeLimit = self.globalSunWeb.mainchain.toSun(p.feeLimit);
-          self.globalSunWeb.withdrawTrx(num, interfaceData.withdrawFee, feeLimit).then(txId => {
+          self.globalSunWeb.withdrawTrx(num, feeLimit).then(txId => {
              this.$message({
               type: "success",
               message: self.$t("operationWithdraw"),
@@ -348,9 +333,9 @@ export default {
       }
     },
     depositTrx() {
-     if (!this.loginState) {
+      if (!this.address.base58) {
         this.$message({
-          type: "warn",
+          type: "success",
           message: this.$t("noLogin"),
           showClose: true
         });
@@ -363,7 +348,7 @@ export default {
         confirm: (p) => {
           const num = self.globalSunWeb.mainchain.toSun(p.num);
           const feeLimit = self.globalSunWeb.mainchain.toSun(p.feeLimit);
-          self.globalSunWeb.depositTrx(num, interfaceData.depositFee, feeLimit).then(txId => {
+          self.globalSunWeb.depositTrx(num, feeLimit).then(txId => {
             this.$message({
               type: "success",
               message: self.$t("operationDeposit"),
@@ -493,11 +478,11 @@ export default {
      * 账号地址更新，重新获取数据
      */
     async getData() {
-      if (!this.address.base58) {
+      if (!this.globalSunWeb.mainchain.defaultPrivateKey) {
         return;
       }
       let balance = await getBalance(this.address.hex);
-      // let account = await getaccount(this.address.hex);
+      let account = await getaccount(this.address.hex);
       this.$store.commit("SET_BALANCE", this.globalSunWeb.mainchain.fromSun(balance));
       this.$store.commit("SET_ACCOUNT", account);
     },

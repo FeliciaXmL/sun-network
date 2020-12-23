@@ -9,25 +9,27 @@
         >
           <img :src="require('../assets/images/tron_banner.png')" style="height: 43px;">
         </a>
-        <span class="sun-network">SUN Network</span>
+        <span class="sun-network">Sun Network</span>
         <div class="nav">
-           <!-- <el-button
-            class="test nav-menu-item"
-            type="text"
-            @click="openDoc()"
-          >Apply for test coin</el-button> -->
-
-          <!-- <el-button
+          <el-button
             class="deposit nav-menu-item"
             type="text"
             @click="depositTrx()"
-          >{{$t('DepositText')}}</el-button> -->
+          >{{$t('DepositText')}}</el-button>
 
-          <!-- <el-button
+          <el-button
             class="withdraw nav-menu-item"
             type="text"
             @click="withdrawTrx()"
-          >{{$t('WithdrawText')}}</el-button> -->
+          >{{$t('WithdrawText')}}</el-button>
+
+           <a
+            class="test nav-menu-item"
+            type="text"
+            href="https://tron.network/sunnetwork/"
+            target="_blank"
+            style="text-decoration: none;color: #8f8f8f;font-weight: 500;font-size: 0.16rem;"
+          >Apply for test coin</a>
 
           <!--  账户-->
           <div
@@ -60,10 +62,10 @@
             type="text"
             @click="login()"
           >{{$t('Login')}}</el-button>
-          <!-- <login-dg
+          <login-dg
             :params="loginDgParams"
             v-if="loginDgParams.show"
-          ></login-dg> -->
+          ></login-dg>
 
           <!-- 国际化 -->
           <div class="language">
@@ -88,16 +90,7 @@
         </div>
       </div>
     </div>
-    <el-dialog
-      title=""
-      :visible.sync="dialogVisible"
-      width="40%">
-      <p style="font-size: 16px; font-faily: 'roboto';color:#000;" v-html="loginWallet"></p>
-  <!-- <span slot="footer" class="dialog-footer">
-    <el-button @click="dialogVisible = false">取 消</el-button>
-    <el-button type="primary" @click="dialogVisible = false">确 定</el-button>
-  </span> -->
-    </el-dialog>
+
     <deposit-trx-dg
       :params="depositTrxDgParams"
       v-if="depositTrxDgParams.show"
@@ -114,7 +107,6 @@ import LoginDg from './dialog/login';
 import DepositTrxDg from './dialog/depositTrx';
 import WithdrawTrxDg from './dialog/depositTrx';
 import { getBalance, getaccount } from "~/assets/js/common";
-import interfaceData from '../api/config';
 
 import { mapState } from "vuex";
 
@@ -127,9 +119,6 @@ export default {
   },
   data() {
     return {
-      dialogVisible: false,
-      loginInfo: '',
-      loginWallet: '',
       loginDgParams: {
         show: false
       },
@@ -182,23 +171,20 @@ export default {
       "dialogLogin",
       "balance",
       "mBalance",
-      "loginState"
     ])
   },
   methods: {
-    openDoc() {
-      window.open('https://tron.network/sunnetwork/doc');
-    },
     async login() {
-      this.loginWallet = this.$t('loginWallet');
-
-      this.dialogVisible = true;
-      // this.$alert(this.$t('noLogin'), 'Login', {
-      //     // confirmButtonText: '',
-      //     callback: action => {
-            
-      //     }
-      //   });
+      let self = this;
+      this.loginDgParams = {
+        show: true,
+        confirm: async (privateKey) => {
+          self.globalSunWeb.mainchain.setPrivateKey(privateKey.privateKey);
+          self.globalSunWeb.sidechain.setPrivateKey(privateKey.privateKey);
+          self.$store.commit('SET_SUNWEB', self.globalSunWeb);
+          self.getBalance();
+        }
+      }
     },
     async getBalance() {
       if (!this.address.base58) {
@@ -210,9 +196,9 @@ export default {
       this.$store.commit('SET_MBALANCE', this.globalSunWeb.mainchain.fromSun(mBalance));
     },
     withdrawTrx() {
-      if (!this.address.base58 || !this.loginState) {
+      if (!this.address.base58) {
         this.$message({
-          type: "warn",
+          type: "success",
           message: this.$t("noLogin"),
           showClose: true
         });
@@ -225,7 +211,7 @@ export default {
         confirm: (p) => {
           const num = self.globalSunWeb.mainchain.toSun(p.num);
           const feeLimit = self.globalSunWeb.mainchain.toSun(p.feeLimit);
-          self.globalSunWeb.withdrawTrx(num, interfaceData.withdrawFee, feeLimit).then(txId => {
+          self.globalSunWeb.withdrawTrx(num, feeLimit).then(txId => {
              this.$message({
               type: "success",
               message: self.$t("operationWithdraw"),
@@ -243,9 +229,9 @@ export default {
       }
     },
     depositTrx() {
-      if (!this.address.base58 || !this.loginState) {
+      if (!this.address.base58) {
         this.$message({
-          type: "warn",
+          type: "success",
           message: this.$t("noLogin"),
           showClose: true
         });
@@ -258,7 +244,7 @@ export default {
         confirm: (p) => {
           const num = self.globalSunWeb.mainchain.toSun(p.num);
           const feeLimit = self.globalSunWeb.mainchain.toSun(p.feeLimit);
-          self.globalSunWeb.depositTrx(num, interfaceData.depositFee, feeLimit).then(txId => {
+          self.globalSunWeb.depositTrx(num, feeLimit).then(txId => {
             this.$message({
               type: "success",
               message: self.$t("operationDeposit"),
@@ -266,7 +252,6 @@ export default {
             });
             return;
           }).catch(ex => {
-            console.log(ex)
             this.$message({
               type: "error",
               message: ex.message || 'error',

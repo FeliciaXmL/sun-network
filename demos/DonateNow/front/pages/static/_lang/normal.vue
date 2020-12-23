@@ -21,7 +21,7 @@
             </div>
           </div>
           <div class="input-div">
-            <el-input placeholder="Share your story" v-model="story" style="width: 80%;"></el-input>
+            <el-input placeholder="Share your story" v-model.trim="story" style="width: 80%;"></el-input>
             <el-input placeholder="Donate with love" v-model.trim="amount" style="width: calc(80% - 0.5rem);margin-top: 20px;"></el-input> <span style="font-size:0.2rem; color: #777777;">TRX</span>
             <span @click="donate()" class="donate-btn">Let’s Do it</span>
           </div>
@@ -62,17 +62,10 @@ import { getTransactionInfoById } from "@/assets/js/common";
 import { getBalance, getaccount } from "~/assets/js/common";
 import bus from "~/assets/js/bus";
 import interfaceData from "@/api/config";
-import SunWeb2 from 'sunweb';
-// import SunWeb2 from '../../../../../../js-sdk/src/index';
-import { clearInterval, setInterval, setTimeout } from 'timers';
+import SunWeb from 'sunweb';
+import { clearInterval, setInterval } from 'timers';
 
 let contractAddress = interfaceData.contractAddress;
-const decodeOutput = (abi, output) => {
-    const names = abi.map(({name}) => name).filter(name => !!name);
-    const types = abi.map(({type}) => type);
-
-    return utils.abi.decodeParams(names, types, output);
-};
 
 export default {
   components: {
@@ -94,195 +87,104 @@ export default {
       story: '',
       allDonations: [],
       intervalAll: null,
-      intervalTotal: null,
-      triggerParams: [
-        interfaceData.contractAddress,
-        '',
-        {
-          _isConstant: true
-        }
-      ],
-      contractInstance2: null,
+      intervalTotal: null
     };
   },
-  async created() {
-    // const sunWeb = new SunWeb(interfaceData.mainOptions, interfaceData.sideOptions, interfaceData.mainGatewayAddress, interfaceData.sideGatewayAddress, interfaceData.chainId, interfaceData.privateKey);
-
-  //  this.$store.commit('SET_SUNWEB', sunWeb);
-    this.initTronLink();
-    const sunWeb2 = new SunWeb2(interfaceData.mainOptions, interfaceData.sideOptions, interfaceData.mainGatewayAddress, interfaceData.sideGatewayAddress, interfaceData.chainId);
-    sunWeb2.mainchain.setAddress(interfaceData.ownAddr);
-    sunWeb2.sidechain.setAddress(interfaceData.ownAddr);
-    this.$store.commit('SET_SUNWEB2', sunWeb2);
-    this.contractInstance2 = await sunWeb2.sidechain
-                .contract()
-                .at(contractAddress);
+  created() {
+    const sunWeb = new SunWeb(interfaceData.mainOptions, interfaceData.sideOptions, interfaceData.mainGatewayAddress, interfaceData.sideGatewayAddress, interfaceData.chainId);
+    this.$store.commit('SET_SUNWEB', sunWeb);
+  
   },
   watch: {
-    // "globalSunWeb.mainchain.defaultAddress": {
-    //   deep: true,
-    //   handler(newVal, oldVal) {
-    //     if (
-    //       newVal &&
-    //       oldVal &&
-    //       newVal.base58 &&
-    //       oldVal.base58 &&
-    //       newVal.base58 !== oldVal.base58
-    //     ) {
-    //       window.location.reload(true);
-    //     }
-    //   }
-    // }
+    "globalSunWeb.mainchain.defaultAddress": {
+      deep: true,
+      handler(newVal, oldVal) {
+        if (
+          newVal &&
+          oldVal &&
+          newVal.base58 &&
+          oldVal.base58 &&
+          newVal.base58 !== oldVal.base58
+        ) {
+          window.location.reload(true);
+        }
+      }
+    }
   },
   computed: {
-    ...mapState(["globalSunWeb", "globalSunWeb2", "address", "balance", "mBalance", "donateIndex", "loginState"])
+    ...mapState(["globalSunWeb", "address", "balance", "mBalance", "donateIndex"])
   },
   async mounted() {
       /**
        * 合约初始化
        */
-      // const contractInstance = await this.globalSunWeb2.sidechain
-      //   .contract()
-      //   .at(contractAddress);
-      // this.contractInstance = contractInstance;
-      // this.$store.commit("SET_CONTRACT_INSTANCE", contractInstance);
-      // setTimeout(() => {
-      //   this.$message({
-      //     type: "warn",
-      //     message: this.$t("noLogin"),
-      //     showClose: true
-      //   });
-      // }, 1000)
+      const contractInstance = await this.globalSunWeb.sidechain
+        .contract()
+        .at(contractAddress);
+      this.contractInstance = contractInstance;
+      this.$store.commit("SET_CONTRACT_INSTANCE", contractInstance);
       setTimeout(()=>{this.getAllDonations()}, 0);
       this.interTotal = setInterval(async () => {
         this.getAllDonationAmount();
       }, 1000);
-      setInterval(async () => {
-        this.getBalance();
-      }, 3000);
-      // const contractInstance = await this.globalSunWeb2.sidechain
-      //   .contract()
-      //   .at(contractAddress);
-      // this.contractInstance = contractInstance;
-      // this.$store.commit("SET_CONTRACT_INSTANCE", contractInstance);
-      // setTimeout(() => {
-      //   this.$message({
-      //     type: "warn",
-      //     message: this.$t("noLogin"),
-      //     showClose: true
-      //   });
-      // }, 1000)
-      // setTimeout(()=>{this.getAllDonations()}, 0);
-      // this.interTotal = setInterval(async () => {
-      //   this.getAllDonationAmount();
-      // }, 1000);
 
   },
   methods: {
-    initTronLink(){
-      let sunWeb = {};
-      let tmpTimer1 = setInterval(()=>{
-        if (window.sunWeb) {
-          clearInterval(tmpTimer1);
-          sunWeb = window.sunWeb;
-          if(tmpTimer2) clearInterval(tmpTimer2);
-          //1s检测钱包是否登录
-          let tmpTimer2 = setInterval(async ()=>{
-            if (sunWeb.mainchain.defaultAddress.base58 != false) {
-              clearInterval(tmpTimer2);
-              this.$store.commit('SET_SUNWEB', sunWeb);
-              const contractInstance = await sunWeb.sidechain
-                .contract()
-                .at(contractAddress);
-              this.contractInstance = contractInstance;
-            }
-          }, 1000);
-
-        }
-      }, 1000);
-    },
     async getAllDonationAmount() {
-      // if (!this.address.base58) {
-      //   return;
-      // }
-
-      const self = this;
-      let contractAddress = interfaceData.contractAddress;
-      let functionSelector = 'totalDonation()';
-      let options = {
-        _isConstant: true
-      };
-      let issuerAddress = this.globalSunWeb2.sidechain.defaultAddress.hex;
-      let result = await this.globalSunWeb2.sidechain.transactionBuilder.triggerSmartContract(
-        contractAddress,
-        functionSelector,
-        options,
-        [],
-        issuerAddress
-      );
-      if (!result) {
+      if (!this.address.base58) {
         return;
       }
-      let total = parseInt(result.constant_result[0].replace('/^0x/', '') || 0, 16);
-      this.totalDonate = this.globalSunWeb2.sidechain.fromSun(total);
+
+      const self = this;
+      let result = await this.contractInstance
+        .totalDonation()
+        .call()
+        .catch(err => {
+          console.log(err)
+          self.$message.error(err);
+          return;
+        });
+        let total = parseInt(result._hex.replace('/^0x/', '') || 0, 16);
+        this.totalDonate = this.globalSunWeb.sidechain.fromSun(total);
     },
     async getAllDonations() {
-      // if (!this.address.base58) {
-      //   // setTimeout(() => { this.getAllDonations() }, 1000);
-      //   return;
-      // }
+      if (!this.address.base58) {
+        setTimeout(() => { this.getAllDonations() }, 1000);
+        return;
+      }
       const self = this;
-      // let result = await this.contractInstance
-      //   .index()
-      //   .call()
-      //   .catch(err => {
-      //     console.log(err)
-      //     if (err == 'callerAddress account does not exist') {
+      let result = await this.contractInstance
+        .index()
+        .call()
+        .catch(err => {
+          console.log(err)
+          self.$message.error(err);
+          return;
+        });
 
-      //     }
-      //     // self.$message.error(err);
-      //     return;
-      //   });
-      let contractAddress = interfaceData.contractAddress;
-      let functionSelector = 'index()';
-      let options = {
-        _isConstant: true
-      };
-      let issuerAddress = this.globalSunWeb2.sidechain.defaultAddress.hex;
-      let result = await this.globalSunWeb2.sidechain.transactionBuilder.triggerSmartContract(
-        contractAddress,
-        functionSelector,
-        options,
-        [],
-        issuerAddress
-      );
       if (!result) return;
-      let donateIndex = parseInt(result.constant_result[0].replace('/^0x/', '') || 0, 16);
+      let donateIndex = parseInt(result._hex.replace('/^0x/', '') || 0, 16);
       let num = 1;
       let arr = [];
       while(donateIndex > 0) {
         num++;
-        if (num > 100) break;
-        let transaction = await this.contractInstance2
+        if (num > 20) break;
+        let record = await this.contractInstance
           .check(donateIndex)
           .call()
           .catch(err => {
-            console.log(err);
-            // self.$message.error(err);
+            console.log(err)
+            self.$message.error(err);
             return;
           });
-          if (!transaction) {
-            return;
-          }
-          console.log(transaction)
-          if (transaction) {
+          if (record) {
             const temp = {
-              address: self.globalSunWeb2.sidechain.address.fromHex(transaction[0]),
-              amount: parseInt(transaction[1]._hex.replace('/^0x/', '') || 0, 16),
-              story: transaction[2],
+              address: self.globalSunWeb.sidechain.address.fromHex(record[0]),
+              amount: parseInt(record[1]._hex.replace('/^0x/', '') || 0, 16),
+              story: record[2],
               index: donateIndex
             }
-            temp.amount = this.globalSunWeb2.sidechain.fromSun(temp.amount);
+            temp.amount = this.globalSunWeb.sidechain.fromSun(temp.amount);
             const filter = self.allDonations.filter(item => {
               return item.index == donateIndex;
             });
@@ -295,7 +197,7 @@ export default {
       this.allDonations = this.descSort(this.allDonations, 'index');
       setTimeout(() => {
         this.getAllDonations()
-      }, 10000);
+      }, 1000);
     },
      /**
      * 倒序排序
@@ -312,17 +214,16 @@ export default {
     },
     async donate() {
       if (!this.address.base58) {
-        const h = this.$createElement;
         this.$message({
-          type: "warn",
+          type: "success",
           message: this.$t("noLogin"),
           showClose: true
         });
         return;
       }
-      
-       const amount = parseFloat(this.amount);
-       if (isNaN(amount) || amount <= 0) {
+
+      const amount = parseInt(this.amount);
+      if (isNaN(amount) && amount <= 0) {
         this.$message({
           type: "success",
           message: "Please input valid donate TRX",
@@ -330,7 +231,7 @@ export default {
         });
         return;
       }
-      // const story = this.story.trim();
+      const story = this.story;
       const self = this;
       let transactionId = await this.contractInstance
         .donate(this.story)
@@ -343,8 +244,10 @@ export default {
           self.$message.error(err);
           return;
         });
+
       if (!transactionId) return;
       this.checkResult(transactionId);
+
     },
     checkResult(transactionId) {
       const self = this;
@@ -358,7 +261,7 @@ export default {
           tInfo = await getTransactionInfoById(transactionId);
           let donateIndex = 0;
           if (tInfo) {
-            // console.log("tInfo: ", tInfo);
+            console.log("tInfo: ", tInfo);
             if (
               tInfo.receipt.hasOwnProperty("result") &&
               tInfo.receipt.result === "SUCCESS"

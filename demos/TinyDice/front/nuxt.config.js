@@ -20,7 +20,7 @@ export default {
       }
     ],
     script: [
-      { src: "/demos/tinydice/js/vconsole.min.js" }
+      { src: "/js/vconsole.min.js" }
     ]
   },
   /*
@@ -29,7 +29,6 @@ export default {
   loading: false,
 
   router: {
-    base: "/demos/tinydice",
     middleware: "i18n"
   },
 
